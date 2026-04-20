@@ -111,7 +111,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
       <div class="card-body">
         <div class="notice">請仔細確認欲預約的時段，時段一經送出即完成預約，請勿隨意更動，確認無誤後再進行預約。</div>
         <div class="hint">可選擇連續時段，最多 4 個時段（共 8 小時）</div>
-        <div class="slots-grid" id="slotsgrid"></div>
+        <div id="slotsLoading" style="text-align:center;padding:20px 0;font-size:13px;color:#999;">載入可預約時段中⋯</div>
+        <div class="slots-grid" id="slotsgrid" style="display:none"></div>
       </div>
     </div>
 
@@ -157,7 +158,6 @@ function loadBooked(){
   window.__bc=function(list){
     Object.keys(BOOKED).forEach(k=>delete BOOKED[k]);
     list.forEach(k=>{BOOKED[k]=true;});
-    if(selDate)renderSlots();
   };
   const s=document.createElement('script');
   s.id='_jsonp';
@@ -200,11 +200,43 @@ function renderCal(){
 function pickDate(ds){
   selDate=ds;selSlots=[];
   renderCal();
-  renderSlots();
   document.getElementById('slotCard').style.display='block';
   document.getElementById('formCard').style.display='none';
   document.getElementById('summaryBox').style.display='none';
+  document.getElementById('slotsLoading').style.display='block';
+  document.getElementById('slotsgrid').style.display='none';
   document.getElementById('slotCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+  reloadAndRender();
+}
+
+function reloadAndRender(){
+  const url=document.getElementById('sheetUrl').value.trim();
+  if(!url){renderSlots();return;}
+  const old=document.getElementById('_jsonp');
+  if(old)old.remove();
+  window.__bc=function(list){
+    Object.keys(BOOKED).forEach(k=>delete BOOKED[k]);
+    list.forEach(k=>{BOOKED[k]=true;});
+    document.getElementById('slotsLoading').style.display='none';
+    document.getElementById('slotsgrid').style.display='grid';
+    renderSlots();
+  };
+  const s=document.createElement('script');
+  s.id='_jsonp';
+  s.src=url+'?callback=__bc&t='+Date.now();
+  s.onerror=function(){
+    document.getElementById('slotsLoading').style.display='none';
+    document.getElementById('slotsgrid').style.display='grid';
+    renderSlots();
+  };
+  document.body.appendChild(s);
+  setTimeout(function(){
+    if(document.getElementById('slotsLoading').style.display!=='none'){
+      document.getElementById('slotsLoading').style.display='none';
+      document.getElementById('slotsgrid').style.display='grid';
+      renderSlots();
+    }
+  },4000);
 }
 
 function renderSlots(){
