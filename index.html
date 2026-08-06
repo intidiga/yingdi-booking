@@ -46,6 +46,10 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 .slot-btn.sel{background:var(--o);border-color:var(--o);color:white;font-weight:500}
 .slot-btn.booked{background:#f0f0f0;border-color:#ddd;color:#bbb;cursor:not-allowed;text-decoration:line-through;font-size:12px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.region-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.region-btn{border:1.5px solid #b8d8d2;border-radius:9px;padding:16px 10px;font-size:14px;background:white;color:var(--g3);cursor:pointer;text-align:center;font-family:inherit;font-weight:500;transition:all .15s;}
+.region-btn:hover{background:#eaf3f0;border-color:var(--g)}
+.region-btn.sel{background:var(--g);border-color:var(--g);color:white}
 .fg{display:flex;flex-direction:column;gap:5px}
 .fg label{font-size:12px;font-weight:500;color:var(--g);letter-spacing:.03em}
 .fg input{border:1.5px solid #c5d8d3;border-radius:8px;padding:9px 12px;font-size:13px;background:white;font-family:inherit;color:#333;outline:none;transition:border-color .15s;}
@@ -64,6 +68,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 .site-footer{background:var(--g3);color:#8ab3a8;text-align:center;padding:20px;font-size:12px;letter-spacing:.04em;}
 @media(max-width:480px){
   .form-grid{grid-template-columns:1fr}
+  .region-grid{grid-template-columns:1fr}
   .site-header{padding:0 16px}
   .hero{padding:36px 16px 24px}
   .hero-title{font-size:20px}
@@ -86,12 +91,35 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 </div>
 
 <div class="container">
-  <input type="hidden" id="sheetUrl" value="https://script.google.com/macros/s/AKfycbyTw390PDyhkSUKkIrsa4MHIrwCwnz4oBBpvPGFOJQONU0Al6Pkumk7iK0EuTcU1_9C/exec" />
+  <input type="hidden" id="sheetUrl" value="https://script.google.com/macros/s/AKfycbwVUGDWy_3g-3CDS_-r6ENJ9M8MPu4ulTo_Fh9DLccHGRg875QLFmXFAp6sjG6ZQyDZ/exec" />
 
   <div id="bookingFlow">
 
     <div class="card">
-      <div class="card-head"><div class="step-circle">1</div><div class="card-head-title">選擇拍攝日期</div></div>
+      <div class="card-head"><div class="step-circle">1</div><div class="card-head-title">選擇所在地區</div></div>
+      <div class="card-body">
+        <div class="region-grid" id="regionGrid">
+          <button class="region-btn" data-region="台北" onclick="pickRegion('台北')">台北</button>
+          <button class="region-btn" data-region="台中" onclick="pickRegion('台中')">台中</button>
+          <button class="region-btn" data-region="其他縣市/國家" onclick="pickRegion('其他縣市/國家')">其他縣市/國家</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="remoteNoticeCard" style="display:none">
+      <div class="card-head"><div class="step-circle">2</div><div class="card-head-title">請與我們特別安排時間</div></div>
+      <div class="card-body">
+        <div class="notice">外縣市／國外拍攝需個別安排交通與時間，請填寫聯絡資料，我們會盡快與你討論並確認拍攝時間喔！</div>
+        <div class="form-grid">
+          <div class="fg"><label>姓名 *</label><input type="text" id="rName" placeholder="你的名字"></div>
+          <div class="fg"><label>聯絡電話 *</label><input type="tel" id="rPhone" placeholder="0912-345-678"></div>
+        </div>
+        <button class="submit-btn" id="remoteSubmitBtn" onclick="doRemoteSubmit()">送出諮詢需求</button>
+      </div>
+    </div>
+
+    <div class="card" id="calCard" style="display:none">
+      <div class="card-head"><div class="step-circle">2</div><div class="card-head-title">選擇拍攝日期</div></div>
       <div class="card-body">
         <div class="cal-nav">
           <button onclick="chgM(-1)">&#8249;</button>
@@ -107,17 +135,16 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
     </div>
 
     <div class="card" id="slotCard" style="display:none">
-      <div class="card-head"><div class="step-circle">2</div><div class="card-head-title">選擇拍攝時段</div></div>
+      <div class="card-head"><div class="step-circle">3</div><div class="card-head-title">選擇拍攝時段</div></div>
       <div class="card-body">
         <div class="notice">請仔細確認欲預約的時段，時段一經送出即完成預約，請勿隨意更動，確認無誤後再進行預約。</div>
         <div class="hint">可選擇連續時段，最多 4 個時段（共 8 小時）</div>
-        <div id="slotsLoading" style="text-align:center;padding:20px 0;font-size:13px;color:#999;">載入可預約時段中⋯</div>
-        <div class="slots-grid" id="slotsgrid" style="display:none"></div>
+        <div class="slots-grid" id="slotsgrid"></div>
       </div>
     </div>
 
     <div class="card" id="formCard" style="display:none">
-      <div class="card-head"><div class="step-circle">3</div><div class="card-head-title">填寫預約資料</div></div>
+      <div class="card-head"><div class="step-circle">4</div><div class="card-head-title">填寫預約資料</div></div>
       <div class="card-body">
         <div class="form-grid">
           <div class="fg"><label>姓名 *</label><input type="text" id="fName" placeholder="你的名字"></div>
@@ -148,7 +175,25 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 const SLOTS=['09:00 – 11:00','11:00 – 13:00','14:00 – 16:00','16:00 – 18:00','18:00 – 20:00'];
 const BOOKED={};
 let cy=new Date().getFullYear(),cm=new Date().getMonth();
-let selDate=null,selSlots=[];
+let selDate=null,selSlots=[],selRegion=null;
+
+function pickRegion(region){
+  selRegion=region;
+  document.querySelectorAll('.region-btn').forEach(b=>{
+    b.classList.toggle('sel', b.dataset.region===region);
+  });
+  if(region==='其他縣市/國家'){
+    document.getElementById('calCard').style.display='none';
+    document.getElementById('slotCard').style.display='none';
+    document.getElementById('formCard').style.display='none';
+    document.getElementById('remoteNoticeCard').style.display='block';
+    document.getElementById('remoteNoticeCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+  } else {
+    document.getElementById('remoteNoticeCard').style.display='none';
+    document.getElementById('calCard').style.display='block';
+    document.getElementById('calCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
 
 function loadBooked(){
   const url=document.getElementById('sheetUrl').value.trim();
@@ -158,6 +203,7 @@ function loadBooked(){
   window.__bc=function(list){
     Object.keys(BOOKED).forEach(k=>delete BOOKED[k]);
     list.forEach(k=>{BOOKED[k]=true;});
+    if(selDate)renderSlots();
   };
   const s=document.createElement('script');
   s.id='_jsonp';
@@ -184,11 +230,12 @@ function renderCal(){
     const dt=new Date(cy,cm,d);
     const dStr=cy+'-'+String(cm+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const el=document.createElement('div');
-    if(dt<today){el.className='dc past';}
+    if(dt<=today){
+      el.className = (dt.getTime()===today.getTime()) ? 'dc past today-mark' : 'dc past';
+    }
     else{
       let cls='dc avail';
       if(selDate===dStr)cls+=' selected';
-      if(dt.getTime()===today.getTime())cls+=' today-mark';
       el.className=cls;
       el.onclick=()=>pickDate(dStr);
     }
@@ -200,43 +247,11 @@ function renderCal(){
 function pickDate(ds){
   selDate=ds;selSlots=[];
   renderCal();
+  renderSlots();
   document.getElementById('slotCard').style.display='block';
   document.getElementById('formCard').style.display='none';
   document.getElementById('summaryBox').style.display='none';
-  document.getElementById('slotsLoading').style.display='block';
-  document.getElementById('slotsgrid').style.display='none';
   document.getElementById('slotCard').scrollIntoView({behavior:'smooth',block:'nearest'});
-  reloadAndRender();
-}
-
-function reloadAndRender(){
-  const url=document.getElementById('sheetUrl').value.trim();
-  if(!url){renderSlots();return;}
-  const old=document.getElementById('_jsonp');
-  if(old)old.remove();
-  window.__bc=function(list){
-    Object.keys(BOOKED).forEach(k=>delete BOOKED[k]);
-    list.forEach(k=>{BOOKED[k]=true;});
-    document.getElementById('slotsLoading').style.display='none';
-    document.getElementById('slotsgrid').style.display='grid';
-    renderSlots();
-  };
-  const s=document.createElement('script');
-  s.id='_jsonp';
-  s.src=url+'?callback=__bc&t='+Date.now();
-  s.onerror=function(){
-    document.getElementById('slotsLoading').style.display='none';
-    document.getElementById('slotsgrid').style.display='grid';
-    renderSlots();
-  };
-  document.body.appendChild(s);
-  setTimeout(function(){
-    if(document.getElementById('slotsLoading').style.display!=='none'){
-      document.getElementById('slotsLoading').style.display='none';
-      document.getElementById('slotsgrid').style.display='grid';
-      renderSlots();
-    }
-  },4000);
 }
 
 function renderSlots(){
@@ -307,7 +322,7 @@ async function doSubmit(){
   const first=SLOTS[selSlots[0]].split(' – ')[0];
   const last=SLOTS[selSlots[selSlots.length-1]].split(' – ')[1];
   const slotStr=first+' – '+last+'（共 '+selSlots.length*2+' 小時）';
-  const payload={name,phone,date:selDate,slot:slotStr};
+  const payload={name,phone,region:selRegion,date:selDate,slot:slotStr};
   if(url){
     try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)});}
     catch(e){console.warn('送出失敗',e);}
@@ -320,16 +335,39 @@ async function doSubmit(){
   box.scrollIntoView({behavior:'smooth'});
 }
 
+async function doRemoteSubmit(){
+  const name=document.getElementById('rName').value.trim();
+  const phone=document.getElementById('rPhone').value.trim();
+  if(!name||!phone){alert('請填寫姓名和聯絡電話');return;}
+  const btn=document.getElementById('remoteSubmitBtn');
+  btn.disabled=true;btn.textContent='送出中…';
+  const url=document.getElementById('sheetUrl').value.trim();
+  const payload={name,phone,region:selRegion,date:'',slot:'需另外安排（外縣市/國家）'};
+  if(url){
+    try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)});}
+    catch(e){console.warn('送出失敗',e);}
+  }
+  document.getElementById('bookingFlow').style.display='none';
+  const box=document.getElementById('successBox');box.style.display='block';
+  document.getElementById('successMsg').innerHTML='<strong>'+name+'</strong> 的諮詢需求已收到！<br><br>映緹影像將盡快與你聯繫，討論拍攝時間與交通安排<br>期待與你的合作 ✦';
+  box.scrollIntoView({behavior:'smooth'});
+}
+
 function resetForm(){
-  selDate=null;selSlots=[];
+  selDate=null;selSlots=[];selRegion=null;
   document.getElementById('successBox').style.display='none';
   document.getElementById('bookingFlow').style.display='block';
+  document.getElementById('calCard').style.display='none';
+  document.getElementById('remoteNoticeCard').style.display='none';
   document.getElementById('slotCard').style.display='none';
   document.getElementById('formCard').style.display='none';
   document.getElementById('summaryBox').style.display='none';
-  ['fName','fPhone'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.region-btn').forEach(b=>b.classList.remove('sel'));
+  ['fName','fPhone','rName','rPhone'].forEach(id=>document.getElementById(id).value='');
   const btn=document.getElementById('submitBtn');
   btn.disabled=false;btn.textContent='確認送出預約';
+  const rbtn=document.getElementById('remoteSubmitBtn');
+  rbtn.disabled=false;rbtn.textContent='送出諮詢需求';
   renderCal();
   window.scrollTo({top:0,behavior:'smooth'});
 }
