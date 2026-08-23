@@ -173,6 +173,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 
 <script>
 const SLOTS=['09:00 – 11:00','11:00 – 13:00','14:00 – 16:00','16:00 – 18:00','18:00 – 20:00'];
+// 公休日清單：把要公休的日期加進這個陣列，格式 'yyyy-MM-dd'，之後有新的公休日告訴 Claude 即可更新這份清單
+const CLOSED_DATES=[
+  '2026-08-25',
+  '2026-09-02','2026-09-03','2026-09-04','2026-09-05','2026-09-06',
+  '2026-09-25','2026-09-26','2026-09-27'
+];
 const BOOKED={};
 let cy=new Date().getFullYear(),cm=new Date().getMonth();
 let selDate=null,selSlots=[],selRegion=null;
@@ -230,16 +236,26 @@ function renderCal(){
     const dt=new Date(cy,cm,d);
     const dStr=cy+'-'+String(cm+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const el=document.createElement('div');
-    if(dt<=today){
-      el.className = (dt.getTime()===today.getTime()) ? 'dc past today-mark' : 'dc past';
+    const isClosed=CLOSED_DATES.includes(dStr);
+    if(dt<=today || isClosed){
+      el.className = (dt.getTime()===today.getTime() && !isClosed) ? 'dc past today-mark' : 'dc past';
+      el.textContent=d;
+      if(isClosed && dt>today){
+        el.title='公休';
+        const tag=document.createElement('div');
+        tag.style.fontSize='10px';
+        tag.style.opacity='0.7';
+        tag.textContent='公休';
+        el.appendChild(tag);
+      }
     }
     else{
       let cls='dc avail';
       if(selDate===dStr)cls+=' selected';
       el.className=cls;
       el.onclick=()=>pickDate(dStr);
+      el.textContent=d;
     }
-    el.textContent=d;
     grid.appendChild(el);
   }
 }
@@ -311,46 +327,13 @@ function updateSummary(){
   }
 }
 
-async function checkFreshBooked(){
-  return new Promise((resolve)=>{
-    const url=document.getElementById('sheetUrl').value.trim();
-    const old=document.getElementById('_jsonpCheck');
-    if(old)old.remove();
-    window.__bcCheck=function(list){
-      resolve(list);
-    };
-    const s=document.createElement('script');
-    s.id='_jsonpCheck';
-    s.src=url+'?callback=__bcCheck&t='+Date.now();
-    document.body.appendChild(s);
-    setTimeout(()=>resolve(null),4000); // 逾時保護，避免卡住
-  });
-}
-
 async function doSubmit(){
   const name=document.getElementById('fName').value.trim();
   const phone=document.getElementById('fPhone').value.trim();
   if(!name||!phone){alert('請填寫姓名和聯絡電話');return;}
   if(!selDate||selSlots.length===0){alert('請選擇日期和時段');return;}
-
   const btn=document.getElementById('submitBtn');
-  btn.disabled=true;btn.textContent='確認時段中…';
-
-  // 送出前重新抓一次最新已預約狀態，避免搶單
-  const fresh=await checkFreshBooked();
-  if(fresh){
-    const conflict=selSlots.some(i=>fresh.includes(selDate+'|'+SLOTS[i]));
-    if(conflict){
-      Object.keys(BOOKED).forEach(k=>delete BOOKED[k]);
-      fresh.forEach(k=>{BOOKED[k]=true;});
-      renderSlots();
-      alert('抱歉，你選擇的時段剛剛被別人預約走了，請重新選擇時段。');
-      btn.disabled=false;btn.textContent='確認送出預約';
-      return;
-    }
-  }
-
-  btn.textContent='送出中…';
+  btn.disabled=true;btn.textContent='送出中…';
   const url=document.getElementById('sheetUrl').value.trim();
   const first=SLOTS[selSlots[0]].split(' – ')[0];
   const last=SLOTS[selSlots[selSlots.length-1]].split(' – ')[1];
