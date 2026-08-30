@@ -91,7 +91,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 </div>
 
 <div class="container">
-  <input type="hidden" id="sheetUrl" value="https://script.google.com/macros/s/AKfycbwVUGDWy_3g-3CDS_-r6ENJ9M8MPu4ulTo_Fh9DLccHGRg875QLFmXFAp6sjG6ZQyDZ/exec" />
+  <input type="hidden" id="sheetUrl" value="https://script.google.com/macros/s/AKfycbyTw390PDyhkSUKkIrsa4MHIrwCwnz4oBBpvPGFOJQONU0Al6Pkumk7iK0EuTcU1_9C/exec" />
 
   <div id="bookingFlow">
 
@@ -231,22 +231,25 @@ function renderCal(){
   const first=new Date(cy,cm,1).getDay();
   const days=new Date(cy,cm+1,0).getDate();
   const today=new Date();today.setHours(0,0,0,0);
+  const cutoff=new Date(today);cutoff.setDate(cutoff.getDate()+1); // 今天+明天都關閉，明天是最早可預約的截止點
   for(let i=0;i<first;i++){const e=document.createElement('div');e.className='dc empty';grid.appendChild(e);}
   for(let d=1;d<=days;d++){
     const dt=new Date(cy,cm,d);
     const dStr=cy+'-'+String(cm+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const el=document.createElement('div');
     const isClosed=CLOSED_DATES.includes(dStr);
-    if(dt<=today || isClosed){
-      el.className = (dt.getTime()===today.getTime() && !isClosed) ? 'dc past today-mark' : 'dc past';
+    const isTooSoon=dt<=cutoff;
+    if(isTooSoon || isClosed){
+      el.className='dc past';
       el.textContent=d;
-      if(isClosed && dt>today){
+      if(isClosed && dt>cutoff){
         el.title='公休';
         const tag=document.createElement('div');
-        tag.style.fontSize='10px';
-        tag.style.opacity='0.7';
+        tag.style.fontSize='10px';tag.style.opacity='0.7';
         tag.textContent='公休';
         el.appendChild(tag);
+      } else if(isTooSoon && dt>=today){
+        el.title='已截止預約（需提前一天以上）';
       }
     }
     else{
