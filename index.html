@@ -174,12 +174,20 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cr);min-height:100vh
 <script>
 const SLOTS=['09:00 – 11:00','11:00 – 13:00','14:00 – 16:00','16:00 – 18:00','18:00 – 20:00'];
 // 公休日清單：把要公休的日期加進這個陣列，格式 'yyyy-MM-dd'，之後有新的公休日告訴 Claude 即可更新這份清單
+// 公休日清單（日曆上顯示「公休」）：格式 'yyyy-MM-dd'
 const CLOSED_DATES=[
   '2026-08-25',
   '2026-09-02','2026-09-03','2026-09-04','2026-09-05','2026-09-06',
-  '2026-09-25','2026-09-26','2026-09-27',
+  '2026-09-25','2026-09-26','2026-09-27'
+];
+// 整天已被預約的日期清單（日曆上顯示「已預約」）：格式 'yyyy-MM-dd'
+const FULL_BOOKED_DATES=[
   '2026-10-03','2026-10-04',
-  '2026-10-16','2026-10-17','2026-10-18','2026-10-19','2026-10-20','2026-10-21'
+  '2026-10-16','2026-10-17','2026-10-18','2026-10-19','2026-10-20','2026-10-21',
+  '2026-10-24','2026-10-25','2026-10-26',
+  '2026-10-30',
+  '2026-11-06','2026-11-07','2026-11-08',
+  '2026-11-14','2026-11-15'
 ];
 const BOOKED={};
 let cy=new Date().getFullYear(),cm=new Date().getMonth();
@@ -240,15 +248,17 @@ function renderCal(){
     const dStr=cy+'-'+String(cm+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const el=document.createElement('div');
     const isClosed=CLOSED_DATES.includes(dStr);
+    const isFullBooked=FULL_BOOKED_DATES.includes(dStr);
     const isTooSoon=dt<=cutoff;
-    if(isTooSoon || isClosed){
+    if(isTooSoon || isClosed || isFullBooked){
       el.className='dc past';
       el.textContent=d;
-      if(isClosed && dt>cutoff){
-        el.title='公休';
+      if((isClosed || isFullBooked) && dt>cutoff){
+        const label=isFullBooked?'已預約':'公休';
+        el.title=label;
         const tag=document.createElement('div');
         tag.style.fontSize='10px';tag.style.opacity='0.7';
-        tag.textContent='公休';
+        tag.textContent=label;
         el.appendChild(tag);
       } else if(isTooSoon && dt>=today){
         el.title='已截止預約（需提前一天以上）';
